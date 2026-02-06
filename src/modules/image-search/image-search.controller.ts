@@ -4,25 +4,23 @@ import { AppError } from "../../common/errors/AppError";
 import { StatusCodes } from "http-status-codes";
 
 export class ImageSearchController {
-  // Using arrow function to preserve 'this' context
   findMatches = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.file) {
-        throw new AppError("Image file is required", StatusCodes.BAD_REQUEST);
-      }
+      if (!req.file)
+        throw new AppError("Image required", StatusCodes.BAD_REQUEST);
+
+      // We get isPro from the auth middleware
+      const isPro = req.user?.isPro || false;
 
       const results = await imageSearchService.detectExactMatches(
         req.file.buffer,
+        isPro,
       );
 
-      res.status(StatusCodes.OK).json({
-        success: true,
-        data: results,
-      });
+      res.status(StatusCodes.OK).json({ success: true, data: results });
     } catch (error) {
-      next(error); // Pass to global error handler
+      next(error);
     }
   };
 }
-
 export const imageSearchController = new ImageSearchController();

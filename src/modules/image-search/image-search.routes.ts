@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { imageSearchController } from "./image-search.controller";
 import { uploadMiddleware } from "../../common/middlewares/upload.middleware";
+import { authMiddleware } from "../../common/middlewares/auth.middleware";
 
 const router = Router();
 
-// POST /api/v1/image-search/detect
+// Protect the route so we know who the user is
 router.post(
   "/detect",
-  uploadMiddleware.single("image"), // Apply specific middleware here
+  authMiddleware,
+  uploadMiddleware.single("image"),
   imageSearchController.findMatches,
 );
 

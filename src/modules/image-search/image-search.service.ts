@@ -4,48 +4,52 @@ import { StatusCodes } from "http-status-codes";
 import { VisionResult } from "./image-search.types";
 
 export class ImageSearchService {
-  /**
-   * Sends image buffer to Google Vision API for Web Detection
-   */
-  async detectExactMatches(imageBuffer: Buffer): Promise<VisionResult> {
+  // We accept 'isPro' as a second argument now
+  async detectExactMatches(imageBuffer: Buffer, isPro: boolean): Promise<any> {
     try {
       const [result] = await visionClient.webDetection({
         image: { content: imageBuffer },
       });
 
       const webDetection = result.webDetection;
+      if (!webDetection)
+        throw new AppError("No results", StatusCodes.BAD_GATEWAY);
 
-      if (!webDetection) {
-        throw new AppError(
-          "No web detection results returned from Google",
-          StatusCodes.BAD_GATEWAY,
-        );
+      const exactMatches = webDetection.fullMatchingImages || [];
+      const pages = webDetection.pagesWithMatchingImages || [];
+
+      // --- LOGIC GATING ---
+
+      if (isPro) {
+        // PRO USER: Gets everything
+        return {
+          userTier: "PRO",
+          exactMatches: exactMatches.map((img) => ({
+            url: img.url,
+            score: img.score,
+          })),
+          pages: pages.map((page) => ({
+            title: page.pageTitle,
+            url: page.url,
+          })),
+        };
+      } else {
+        // GENERAL USER: Gets limited info (Teaser)
+        return {
+          userTier: "GENERAL",
+          message: "Upgrade to PRO to see full URLs and source pages.",
+          matchCount: exactMatches.length,
+          // Only show the first match, and maybe mask part of the URL
+          previewMatch: exactMatches.length > 0 ? exactMatches[0].url : null,
+          pagesFound: pages.length, // Just the count, no links
+        };
       }
-
-      // Filter and map results
-      const exactMatches = (webDetection.fullMatchingImages || []).map(
-        (img) => ({
-          url: img.url || "",
-          score: img.score || 0,
-        }),
-      );
-
-      const pages = (webDetection.pagesWithMatchingImages || []).map(
-        (page) => ({
-          title: page.pageTitle || "Unknown Title",
-          url: page.url || "",
-        }),
-      );
-
-      return { exactMatches, pages };
     } catch (error: any) {
-      // Wrap external API errors in our custom AppError
       throw new AppError(
-        `Google Vision API Failed: ${error.message}`,
+        `Vision API Failed: ${error.message}`,
         StatusCodes.INTERNAL_SERVER_ERROR,
       );
     }
   }
 }
-
 export const imageSearchService = new ImageSearchService();
