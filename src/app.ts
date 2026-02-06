@@ -5,6 +5,8 @@ import morgan from "morgan";
 import { imageSearchRouter } from "./modules/image-search/image-search.routes";
 import { AppError } from "./common/errors/AppError";
 import { StatusCodes } from "http-status-codes";
+import { authRouter } from "./modules/auth/auth.routes";
+import { paymentRouter } from "./modules/payment/payment.routes";
 
 const app = express();
 
@@ -16,6 +18,9 @@ app.use(express.json());
 
 // 2. Feature Routes
 // We prefix this module to keep the API versioned
+app.use("/api/v1/image-search", imageSearchRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/payment", paymentRouter);
 app.use("/api/v1/image-search", imageSearchRouter);
 
 // 3. 404 Handler

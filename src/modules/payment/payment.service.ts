@@ -1,12 +1,12 @@
 import axios from "axios";
-import { AppError } from "../../common/errors/AppError"; 
+import { AppError } from "../../common/errors/AppError";
 import { User } from "../auth/user.model";
 import { StatusCodes } from "http-status-codes";
 
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_API_URL } = process.env;
 
 export class PaymentService {
-  // 1. Get Access Token (OAuth 2.0)
+  // Helper: Get PayPal Access Token
   private async getAccessToken(): Promise<string> {
     const auth = Buffer.from(
       `${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`,
@@ -24,13 +24,18 @@ export class PaymentService {
       );
       return response.data.access_token;
     } catch (error) {
-      throw new AppError("PayPal Auth Failed", StatusCodes.SERVICE_UNAVAILABLE);
+      console.error("PayPal Auth Error:", error);
+      throw new AppError(
+        "Payment Provider Error",
+        StatusCodes.SERVICE_UNAVAILABLE,
+      );
     }
   }
 
-  // 2. Create Order
+  // 1. Create Order
   async createOrder(amount: string = "10.00") {
     const accessToken = await this.getAccessToken();
+
     const response = await axios.post(
       `${PAYPAL_API_URL}/v2/checkout/orders`,
       {
@@ -39,10 +44,11 @@ export class PaymentService {
       },
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-    return response.data; // Returns order ID to frontend
+
+    return { id: response.data.id, status: response.data.status };
   }
 
-  // 3. Capture Payment & Upgrade User
+  // 2. Capture Order & Upgrade User
   async captureOrder(orderId: string, userId: string) {
     const accessToken = await this.getAccessToken();
 
@@ -50,18 +56,40 @@ export class PaymentService {
       const response = await axios.post(
         `${PAYPAL_API_URL}/v2/checkout/orders/${orderId}/capture`,
         {},
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
       );
 
+      // Check if PayPal says "COMPLETED"
       if (response.data.status === "COMPLETED") {
-        // PAYMENT SUCCESS: Upgrade the user
-        await User.findByIdAndUpdate(userId, { isPro: true });
-        return { success: true, status: "COMPLETED" };
+        // --- CRITICAL: Upgrade the User in DB ---
+        const updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            isPro: true,
+            proExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          }, // +30 days
+          { new: true },
+        );
+
+        return {
+          success: true,
+          status: "COMPLETED",
+          isPro: updatedUser?.isPro,
+        };
       }
 
       return { success: false, status: response.data.status };
-    } catch (error) {
-      throw new AppError("Payment Capture Failed", StatusCodes.BAD_REQUEST);
+    } catch (error: any) {
+      // Handle cases where order is already captured or invalid
+      throw new AppError(
+        "Could not capture payment. It may have already been processed.",
+        StatusCodes.BAD_REQUEST,
+      );
     }
   }
 }
