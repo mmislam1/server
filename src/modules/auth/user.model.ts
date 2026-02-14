@@ -5,6 +5,7 @@ export interface IUser extends Document {
   passwordHash: string;
   isPro: boolean; 
   proExpiresAt?: Date; 
+  isAdmin: boolean;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -13,6 +14,7 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     isPro: { type: Boolean, default: false },
     proExpiresAt: { type: Date },
+    isAdmin: { type: Boolean, default: false,required: true},
   },
   { timestamps: true },
 );

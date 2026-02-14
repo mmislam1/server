@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 import app from "./app";
 import { config } from "./config/env";
+import dns from "dns";
 
+dns.setDefaultResultOrder("ipv4first");
 // Database Connection
 mongoose
   .connect(process.env.MONGO_URI || "")

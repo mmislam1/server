@@ -22,6 +22,7 @@ export class AuthService {
       email,
       passwordHash,
       isPro: false,
+      isAdmin: false,
     });
 
     const token = this.generateToken(newUser);
@@ -39,6 +40,7 @@ export class AuthService {
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
+    
     if (!isMatch) {
       throw new AppError("Invalid credentials", StatusCodes.UNAUTHORIZED);
     }
