@@ -18,6 +18,7 @@ export class ImageSearchService {
 
       const exactMatches = webDetection.fullMatchingImages || [];
       const pages = webDetection.pagesWithMatchingImages || [];
+      const partialMatchingImages = webDetection.partialMatchingImages||[];
 
       // --- LOGIC GATING ---
 
@@ -29,6 +30,7 @@ export class ImageSearchService {
             url: img.url,
             score: img.score,
           })),
+          partialMatchingImages: partialMatchingImages,
           pages: pages.map((page) => ({
             title: page.pageTitle,
             url: page.url,
