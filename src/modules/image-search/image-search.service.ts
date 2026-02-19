@@ -12,6 +12,7 @@ export class ImageSearchService {
       });
 
       const webDetection = result.webDetection;
+      console.log(webDetection,isPro)
       if (!webDetection)
         throw new AppError("No results", StatusCodes.BAD_GATEWAY);
 
